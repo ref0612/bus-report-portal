@@ -402,103 +402,71 @@ def build_sheet2(wb, data):
     for ci, w in enumerate([14,10,12,10,14,16,12,12,26], 1):
         ws.column_dimensions[get_column_letter(ci)].width = w
 
-    chart_start_row = tr + 2
+    # ── 4 CHARTS in 2x2 grid to the RIGHT of data table ────────────────
+    # Layout: col J (left column) and col V (right column), 2 rows of charts
+    # Each chart: 18cm wide x 14cm tall — professional executive size
+    # Dates always visible on x-axis (tickLblSkip=1)
     cats = Reference(ws, min_col=1, min_row=5, max_row=tr-1)
     is_es = data.get('lang') == 'es'
 
-    # ── CHART 1: Ventas diarias (solo si hay datos de ventas) ─────────────
+    def _build_bar(title, col_idx, color, y_lbl, y_fmt='#,##0'):
+        c = BarChart()
+        c.type = 'col'; c.grouping = 'clustered'; c.style = 10
+        c.title = title; c.legend = None
+        c.height = 14; c.width = 18
+        c.y_axis.title = y_lbl; c.y_axis.numFmt = y_fmt
+        c.x_axis.tickLblPos = 'low'
+        c.x_axis.tickLblSkip = 1; c.x_axis.tickMarkSkip = 1
+        d = Reference(ws, min_col=col_idx, min_row=4, max_row=tr-1)
+        c.add_data(d, titles_from_data=True)
+        c.set_categories(cats)
+        c.series[0].graphicalProperties.solidFill = color
+        c.series[0].graphicalProperties.line.solidFill = color
+        c.series[0].graphicalProperties.line.width = 5000
+        c.series[0].dLbls = _bar_labels(y_fmt)
+        return c
+
+    def _build_line(title, col_idx, color, y_lbl, y_fmt='0.00%'):
+        c = LineChart()
+        c.style = 10; c.title = title; c.legend = None
+        c.height = 14; c.width = 18
+        c.y_axis.title = y_lbl; c.y_axis.numFmt = y_fmt
+        c.x_axis.tickLblPos = 'low'
+        c.x_axis.tickLblSkip = 1; c.x_axis.tickMarkSkip = 1
+        d = Reference(ws, min_col=col_idx, min_row=4, max_row=tr-1)
+        c.add_data(d, titles_from_data=True)
+        c.set_categories(cats)
+        c.series[0].graphicalProperties.line.solidFill = color
+        c.series[0].graphicalProperties.line.width = 22000
+        c.series[0].smooth = True
+        c.series[0].marker.symbol = 'circle'
+        c.series[0].marker.size = 5
+        c.series[0].marker.graphicalProperties.solidFill = color
+        c.series[0].marker.graphicalProperties.line.solidFill = color
+        c.series[0].dLbls = _line_labels(y_fmt)
+        return c
+
+    # Top-left  J4  → Ventas (or Fallas if no sales)
+    # Top-right V4  → Tasa de Falla %
+    # Bot-left  J25 → Fallas (or Abandonos if no sales)
+    # Bot-right V25 → Abandonos
     if has_sales:
-        c_sales = BarChart()
-        c_sales.type = 'col'
-        c_sales.grouping = 'clustered'
-        c_sales.title = 'Ventas Diarias' if is_es else 'Daily Sales'
-        c_sales.style = 2
-        c_sales.height = 10; c_sales.width = 24
-        c_sales.y_axis.title = 'Ventas' if is_es else 'Sales'
-        c_sales.y_axis.numFmt = '#,##0'
-        c_sales.x_axis.tickLblSkip = max(1, len(daily)//15)
-        c_sales.x_axis.tickMarkSkip = max(1, len(daily)//15)
-        c_sales.legend = None
-        d_sales = Reference(ws, min_col=2, min_row=4, max_row=tr-1)
-        c_sales.add_data(d_sales, titles_from_data=True)
-        c_sales.set_categories(cats)
-        c_sales.series[0].graphicalProperties.solidFill = '2E75B6'
-        c_sales.series[0].graphicalProperties.line.solidFill = '1F5490'
-        c_sales.series[0].graphicalProperties.line.width = 6000
-        c_sales.series[0].dLbls = _bar_labels('#,##0')
-        ws.add_chart(c_sales, f'A{chart_start_row}')
-        chart_start_row += 14
+        ws.add_chart(_build_bar(
+            'Ventas Diarias' if is_es else 'Daily Sales',
+            2, '2E75B6', 'Ventas' if is_es else 'Sales'), 'J4')
+        ws.add_chart(_build_bar(
+            'Fallas de Pasarela' if is_es else 'Gateway Failures',
+            3, 'C00000', 'Fallas' if is_es else 'Failures'), 'J25')
+    else:
+        ws.add_chart(_build_bar(
+            'Fallas de Pasarela' if is_es else 'Gateway Failures',
+            3, 'C00000', 'Fallas' if is_es else 'Failures'), 'J4')
 
-    # ── CHART 2: Fallas diarias (barras rojas, eje propio) ────────────────
-    c_fail = BarChart()
-    c_fail.type = 'col'
-    c_fail.grouping = 'clustered'
-    c_fail.title = 'Fallas de Pasarela por Día' if is_es else 'Daily Gateway Failures'
-    c_fail.style = 2
-    c_fail.height = 10; c_fail.width = 24
-    c_fail.y_axis.title = 'Fallas' if is_es else 'Failures'
-    c_fail.y_axis.numFmt = '#,##0'
-    c_fail.y_axis.crossAx = 100
-    c_fail.x_axis.tickLblSkip = max(1, len(daily)//15)
-    c_fail.x_axis.tickMarkSkip = max(1, len(daily)//15)
-    c_fail.legend = None
-    d_fail = Reference(ws, min_col=3, min_row=4, max_row=tr-1)
-    c_fail.add_data(d_fail, titles_from_data=True)
-    c_fail.set_categories(cats)
-    c_fail.series[0].graphicalProperties.solidFill = 'C00000'
-    c_fail.series[0].graphicalProperties.line.solidFill = '900000'
-    c_fail.series[0].graphicalProperties.line.width = 6000
-    c_fail.series[0].dLbls = _bar_labels('#,##0')
-    ws.add_chart(c_fail, f'A{chart_start_row}')
-    chart_start_row += 14
-
-    # ── CHART 3: Tasa de falla % (línea) ─────────────────────────────────
-    c_rate = LineChart()
-    c_rate.title = T['chart2_title']
-    c_rate.style = 2
-    c_rate.height = 10; c_rate.width = 24
-    c_rate.y_axis.title = T['chart2_y']
-    c_rate.y_axis.numFmt = '0.00%'
-    c_rate.y_axis.crossAx = 100
-    c_rate.x_axis.tickLblSkip = max(1, len(daily)//15)
-    c_rate.x_axis.tickMarkSkip = max(1, len(daily)//15)
-    c_rate.legend = None
-    d_rate = Reference(ws, min_col=7, min_row=4, max_row=tr-1)
-    c_rate.add_data(d_rate, titles_from_data=True)
-    c_rate.set_categories(cats)
-    c_rate.series[0].graphicalProperties.line.solidFill = 'C00000'
-    c_rate.series[0].graphicalProperties.line.width = 22000
-    c_rate.series[0].smooth = True
-    # Marker en cada punto
-    c_rate.series[0].marker.symbol = 'circle'
-    c_rate.series[0].marker.size = 5
-    c_rate.series[0].marker.graphicalProperties.solidFill = 'C00000'
-    c_rate.series[0].marker.graphicalProperties.line.solidFill = 'C00000'
-    c_rate.series[0].dLbls = _line_labels('0.00%')
-    ws.add_chart(c_rate, f'A{chart_start_row}')
-    chart_start_row += 14
-
-    # ── CHART 4: Abandonos diarios (barras naranjas) ──────────────────────
-    c_aban = BarChart()
-    c_aban.type = 'col'
-    c_aban.grouping = 'clustered'
-    c_aban.title = 'Abandonos por Día' if is_es else 'Daily Abandonments'
-    c_aban.style = 2
-    c_aban.height = 10; c_aban.width = 24
-    c_aban.y_axis.title = 'Abandonos' if is_es else 'Abandonments'
-    c_aban.y_axis.numFmt = '#,##0'
-    c_aban.y_axis.crossAx = 100
-    c_aban.x_axis.tickLblSkip = max(1, len(daily)//15)
-    c_aban.x_axis.tickMarkSkip = max(1, len(daily)//15)
-    c_aban.legend = None
-    d_aban = Reference(ws, min_col=5, min_row=4, max_row=tr-1)
-    c_aban.add_data(d_aban, titles_from_data=True)
-    c_aban.set_categories(cats)
-    c_aban.series[0].graphicalProperties.solidFill = 'BF8F00'
-    c_aban.series[0].graphicalProperties.line.solidFill = '8C6800'
-    c_aban.series[0].graphicalProperties.line.width = 6000
-    c_aban.series[0].dLbls = _bar_labels('#,##0')
-    ws.add_chart(c_aban, f'A{chart_start_row}')
+    ws.add_chart(_build_line(
+        T['chart2_title'], 7, 'C00000', T['chart2_y']), 'V4')
+    ws.add_chart(_build_bar(
+        'Abandonos por Día' if is_es else 'Daily Abandonments',
+        5, 'BF8F00', 'Abandonos' if is_es else 'Abandonments'), 'V25')
 
 # ─── Sheet 3: Gateway Analysis with chart ─────────────────────────────────────
 def build_sheet3(wb, data):
@@ -559,17 +527,56 @@ def build_sheet3(wb, data):
                  halign='left' if ci==1 else 'center', num_fmt=fmt)
     ws.row_dimensions[tr].height = 20
 
-    # Chart: horizontal bar
+    # ── GATEWAY CHART: stacked horizontal bar, 3 series ──────────────────
+    # Cols: B=Fallas Directas, C=Pend.Fallidos, D=Abandonos
+    # Gateways on Y axis, values on X axis — clearly readable
+    # Each segment color-coded + data labels showing exact count
     chart_r = tr + 2
+    gw_cats = Reference(ws, min_col=1, min_row=5, max_row=tr-1)
+
     chart3 = BarChart()
-    chart3.type = 'bar'
+    chart3.type = 'bar'          # horizontal
+    chart3.grouping = 'stacked'
+    chart3.overlap = 100
     chart3.title = T['gw_chart']
-    chart3.style = 10; chart3.height = 14; chart3.width = 20
-    d3 = Reference(ws, min_col=5, min_row=4, max_row=tr-1)
-    cats3 = Reference(ws, min_col=1, min_row=5, max_row=tr-1)
-    chart3.add_data(d3, titles_from_data=True)
-    chart3.set_categories(cats3)
-    chart3.series[0].graphicalProperties.solidFill = '2E75B6'
+    chart3.style = 10
+    # Wide and tall enough to show all gateways clearly
+    n_gw = len(gateways)
+    chart3.height = max(10, n_gw * 1.6)
+    chart3.width  = 24
+
+    chart3.y_axis.tickLblPos = 'low'   # gateway names on left
+    chart3.x_axis.numFmt = '#,##0'
+    chart3.legend.position = 'b'       # legend at bottom
+
+    # Series 1: Fallas Directas (red)
+    d_fail3 = Reference(ws, min_col=2, min_row=4, max_row=tr-1)
+    chart3.add_data(d_fail3, titles_from_data=True)
+    chart3.set_categories(gw_cats)
+    chart3.series[0].graphicalProperties.solidFill = 'C00000'
+    chart3.series[0].graphicalProperties.line.solidFill = 'C00000'
+    lbl0 = DataLabelList(); lbl0.showVal = True; lbl0.showSerName = False
+    lbl0.showCatName = False; lbl0.showLegendKey = False; lbl0.position = 'ctr'
+    chart3.series[0].dLbls = lbl0
+
+    # Series 2: Pendientes-Fallidos (orange)
+    d_pend3 = Reference(ws, min_col=3, min_row=4, max_row=tr-1)
+    chart3.add_data(d_pend3, titles_from_data=True)
+    chart3.series[1].graphicalProperties.solidFill = 'BF8F00'
+    chart3.series[1].graphicalProperties.line.solidFill = 'BF8F00'
+    lbl1 = DataLabelList(); lbl1.showVal = True; lbl1.showSerName = False
+    lbl1.showCatName = False; lbl1.showLegendKey = False; lbl1.position = 'ctr'
+    chart3.series[1].dLbls = lbl1
+
+    # Series 3: Abandonos (blue)
+    d_aban3 = Reference(ws, min_col=4, min_row=4, max_row=tr-1)
+    chart3.add_data(d_aban3, titles_from_data=True)
+    chart3.series[2].graphicalProperties.solidFill = '2E75B6'
+    chart3.series[2].graphicalProperties.line.solidFill = '2E75B6'
+    lbl2 = DataLabelList(); lbl2.showVal = True; lbl2.showSerName = False
+    lbl2.showCatName = False; lbl2.showLegendKey = False; lbl2.position = 'ctr'
+    chart3.series[2].dLbls = lbl2
+
     ws.add_chart(chart3, f'A{chart_r}')
 
 # ─── Sheet 4: Channel & Device ─────────────────────────────────────────────────
