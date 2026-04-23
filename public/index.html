@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bus Reports Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08090d;--s1:#0e1018;--s2:#141720;--s3:#1c2030;--bd:#242838;--bd2:#2e3448;
+  --acc:#4f8ef7;--ok:#22c55e;--warn:#f59e0b;--err:#ef4444;
+  --txt:#dde1f0;--t2:#8890a8;--t3:#4a5168;
+  --mono:'IBM Plex Mono',monospace;--sans:'Outfit',sans-serif;--r:10px;
+}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:14px;overflow:hidden}
+.app{display:grid;grid-template-columns:320px 1fr;height:100vh;overflow:hidden}
+
+/* ── LEFT PANEL ── */
+.left{background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
+.left-hdr{padding:18px 18px 14px;border-bottom:1px solid var(--bd);flex-shrink:0}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:32px;height:32px;background:var(--acc);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.brand-name{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.brand-tag{font-size:10px;color:var(--t2);font-family:var(--mono);margin-top:1px}
+.left-body{flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:12px}
+.left-body::-webkit-scrollbar{width:3px}
+.left-body::-webkit-scrollbar-thumb{background:var(--bd2)}
+.lbl{font-size:10px;font-family:var(--mono);color:var(--t2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;display:block}
+.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.tc{padding:9px 11px;border-radius:8px;border:1.5px solid var(--bd);background:var(--s2);cursor:pointer;transition:.15s;text-align:left}
+.tc:hover{border-color:var(--acc)}.tc.active{border-color:var(--acc);background:#0d1e3a}
+.tc-name{font-size:11px;font-weight:700;margin-bottom:1px}.tc.active .tc-name{color:var(--acc)}
+.tc-desc{font-size:10px;color:var(--t2);font-family:var(--mono);line-height:1.4}
+.field-row{display:grid;grid-template-columns:1fr 100px;gap:7px}
+.field{background:var(--s2);border:1px solid var(--bd);color:var(--txt);font-family:var(--sans);font-size:13px;padding:8px 11px;border-radius:8px;outline:none;transition:.15s;width:100%}
+.field:focus{border-color:var(--acc)}.field option{background:var(--s2)}
+.zones-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.zone{background:var(--s2);border:1.5px dashed var(--bd);border-radius:8px;padding:9px 11px;cursor:pointer;transition:.15s;position:relative;min-height:64px}
+.zone:hover{border-color:var(--acc);background:var(--s3)}.zone.has{border-style:solid;border-color:var(--ok);background:#0a1f12}
+.zone.opt{opacity:.6}.zone.opt:hover{opacity:1}
+.zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;z-index:2}
+.zone-top{display:flex;align-items:center;gap:5px;margin-bottom:2px}
+.zdot{width:6px;height:6px;border-radius:50%}.zname{font-size:11px;font-weight:600}
+.zbadge{font-size:9px;font-family:var(--mono);color:var(--t3);background:var(--bd);padding:1px 4px;border-radius:3px;margin-left:auto}
+.zhint{font-size:10px;color:var(--t3);font-family:var(--mono)}
+.zstatus{font-size:10px;font-family:var(--mono);color:var(--ok);margin-top:3px}
+.zstatus.empty{color:var(--t3)}
+.info-note{font-size:10px;font-family:var(--mono);color:#5a9e6a;background:#091510;border:1px solid #1a3d22;border-radius:6px;padding:6px 9px;display:none}
+.info-note.show{display:block}
+.left-ftr{padding:10px 18px 14px;border-top:1px solid var(--bd);flex-shrink:0;display:flex;flex-direction:column;gap:7px}
+.prog{display:none;flex-direction:column;gap:5px}.prog.show{display:flex}
+.prog-track{background:var(--bd);border-radius:2px;height:3px;overflow:hidden}
+.prog-bar{height:100%;background:var(--acc);width:0;transition:width .4s;border-radius:2px}
+.prog-msg{font-family:var(--mono);font-size:10px;color:var(--t2)}
+.btn-gen{width:100%;padding:11px;background:var(--acc);color:#fff;font-family:var(--sans);font-size:13px;font-weight:700;border:none;border-radius:var(--r);cursor:pointer;transition:.15s}
+.btn-gen:hover{opacity:.88}.btn-gen:disabled{opacity:.3;cursor:not-allowed}
+.dl-wrap{display:flex;flex-direction:column;gap:5px}
+.btn-dl{display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border-radius:8px;font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;border:none;text-decoration:none;transition:.15s}
+.btn-dl:hover{opacity:.83}
+.btn-dl.xl{background:#15562f;color:#4ade80;border:1px solid #1c6e3c}
+.btn-dl.doc{background:#132248;color:#7badfd;border:1px solid #1b3165}
+
+/* ── RIGHT PANEL ── */
+.right{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--t3)}
+.empty-icon{font-size:40px;opacity:.25}
+.empty-txt{font-size:12px;font-family:var(--mono)}
+.rview{flex:1;display:none;flex-direction:column;overflow:hidden}
+.rview.show{display:flex}
+
+/* summary bar */
+.sum-bar{padding:12px 18px;border-bottom:1px solid var(--bd);flex-shrink:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sum-op{font-size:14px;font-weight:700}
+.sum-per{font-size:10px;font-family:var(--mono);color:var(--t2)}
+.sbadge{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:4px;margin-left:auto}
+.sbadge.ok{background:#0a2015;color:var(--ok);border:1px solid #1a4a2a}
+.sbadge.warn{background:#1e1400;color:var(--warn);border:1px solid #3d2c00}
+
+/* KPI strip */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:12px 18px;border-bottom:1px solid var(--bd);flex-shrink:0}
+.kpi{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px}
+.kpi-l{font-size:10px;font-family:var(--mono);color:var(--t2);margin-bottom:4px}
+.kpi-v{font-size:18px;font-weight:700;line-height:1;margin-bottom:3px}
+.kpi-s{font-size:10px;color:var(--t3);font-family:var(--mono)}
+.kpi.g .kpi-v{color:var(--ok)}.kpi.r .kpi-v{color:var(--err)}
+.kpi.a .kpi-v{color:var(--warn)}.kpi.b .kpi-v{color:var(--acc)}
+
+/* tabs */
+.tabs{display:flex;gap:2px;padding:8px 18px 0;border-bottom:1px solid var(--bd);flex-shrink:0;background:var(--bg)}
+.tab{padding:7px 14px;font-size:11px;font-weight:600;cursor:pointer;border-radius:6px 6px 0 0;color:var(--t2);border:1px solid transparent;border-bottom:none;transition:.15s;background:none;font-family:var(--sans)}
+.tab:hover{color:var(--txt)}.tab.active{background:var(--s2);border-color:var(--bd);color:var(--txt);margin-bottom:-1px;border-bottom:1px solid var(--s2)}
+
+/* panels */
+.panels{flex:1;overflow:hidden;position:relative}
+.panel{position:absolute;inset:0;overflow-y:auto;display:none;padding:14px 18px}
+.panel.active{display:block}
+.panel::-webkit-scrollbar{width:4px}.panel::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
+
+/* chart grid */
+.c2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.ccard{background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:12px}
+.ccard-t{font-size:10px;font-family:var(--mono);color:var(--t2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
+
+/* alert */
+.alert{background:#1a0808;border:1px solid #3d1414;border-radius:var(--r);padding:9px 12px;margin-bottom:10px;font-size:11px;display:flex;gap:8px}
+.alert-ico{color:var(--err);flex-shrink:0;margin-top:1px}
+.alert-title{font-weight:700;color:var(--err);margin-bottom:2px}
+.alert-body{color:var(--t2);line-height:1.5}
+
+/* gw bars */
+.gw-list{display:flex;flex-direction:column;gap:8px}
+.gwi{display:grid;grid-template-columns:88px 1fr 48px;align-items:center;gap:7px}
+.gw-n{font-family:var(--mono);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gw-t{background:var(--bd);border-radius:2px;height:7px;overflow:hidden}
+.gw-f{height:100%;border-radius:2px;transition:width .4s ease}
+.gw-c{font-family:var(--mono);font-size:11px;color:var(--t2);text-align:right}
+.sec{font-size:10px;font-family:var(--mono);color:var(--t2);text-transform:uppercase;letter-spacing:.1em;margin:14px 0 7px;display:flex;align-items:center;gap:8px}
+.sec::after{content:'';flex:1;height:1px;background:var(--bd)}
+
+/* channel cards */
+.ch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:10px}
+.chc{background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:11px 13px}
+.chc.top{border-color:var(--warn)}
+.chc-n{font-size:10px;font-family:var(--mono);color:var(--t2);margin-bottom:5px}
+.chc.top .chc-n{color:var(--warn)}
+.chc-v{font-size:17px;font-weight:700;margin-bottom:2px}
+.chc-s{font-size:10px;color:var(--t3);font-family:var(--mono)}
+
+/* table */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
+th{padding:6px 9px;text-align:right;color:var(--t2);border-bottom:1px solid var(--bd);white-space:nowrap;font-weight:500;background:var(--s1);position:sticky;top:0}
+th:first-child{text-align:left}
+td{padding:5px 9px;text-align:right;border-bottom:1px solid var(--bd);color:var(--txt)}
+td:first-child{text-align:left;color:var(--t2)}
+tr.cr td{background:#120a0a}
+tr.cr td.red{color:var(--err);font-weight:600}
+tr.wr td{background:#100d02}
+tr:hover td{background:var(--s2)}
+
+.toast{position:fixed;bottom:16px;right:16px;background:var(--err);color:#fff;padding:9px 14px;border-radius:8px;font-size:11px;display:none;z-index:999;font-family:var(--mono);max-width:300px}
+.toast.show{display:block}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- LEFT -->
+<div class="left">
+  <div class="left-hdr">
+    <div class="brand">
+      <div class="brand-icon">🚌</div>
+      <div><div class="brand-name">Bus Reports Portal</div><div class="brand-tag">Payment Analysis Generator</div></div>
+    </div>
+  </div>
+
+  <div class="left-body">
+    <div>
+      <span class="lbl">1 — Operator type</span>
+      <div class="type-grid">
+        <button class="tc active" data-type="konnect" onclick="setType('konnect')">
+          <div class="tc-name">🖥 Konnect</div>
+          <div class="tc-desc">Informe_de_Ventas_*.xlsx</div>
+        </button>
+        <button class="tc" data-type="api" onclick="setType('api')">
+          <div class="tc-name">🔌 API</div>
+          <div class="tc-desc">export_to_csv_*.xlsx</div>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <span class="lbl">2 — Operator &amp; language</span>
+      <div class="field-row" style="margin-bottom:6px">
+        <input class="field" type="text" id="operatorName" placeholder="e.g. Pullman Bus">
+        <select class="field" id="lang" onchange="applyLang(this.value)"><option value="en">English</option><option value="es">Español</option></select>
+      </div>
+    </div>
+
+    <div>
+      <span class="lbl">3 — Files</span>
+      <div class="zones-grid">
+        <div class="zone" id="z-f"><input type="file" id="f-f" multiple accept=".csv">
+          <div class="zone-top"><div class="zdot" style="background:#ef4444"></div><span class="zname">Failures</span></div>
+          <div class="zhint">fallido_*.csv</div>
+          <div class="zstatus empty" id="c-f">drop here</div></div>
+        <div class="zone" id="z-p"><input type="file" id="f-p" multiple accept=".csv">
+          <div class="zone-top"><div class="zdot" style="background:#f59e0b"></div><span class="zname">Pending</span></div>
+          <div class="zhint">pendiente-fallido_*.csv</div>
+          <div class="zstatus empty" id="c-p">drop here</div></div>
+        <div class="zone" id="z-a"><input type="file" id="f-a" multiple accept=".csv">
+          <div class="zone-top"><div class="zdot" style="background:#4f8ef7"></div><span class="zname">Abandonments</span></div>
+          <div class="zhint">abandonos_*.csv</div>
+          <div class="zstatus empty" id="c-a">drop here</div></div>
+        <div class="zone opt" id="z-s"><input type="file" id="f-s" accept=".xlsx">
+          <div class="zone-top"><div class="zdot" style="background:#22c55e"></div><span class="zname">Sales</span><span class="zbadge">optional</span></div>
+          <div class="zhint" id="sales-hint">Informe_de_Ventas_*.xlsx</div>
+          <div class="zstatus empty" id="c-s">failure-only</div></div>
+      </div>
+      <div class="info-note" id="infoNote" style="margin-top:5px">ℹ No sales file — conversion rates N/A</div>
+    </div>
+  </div>
+
+  <div class="left-ftr">
+    <div class="prog" id="prog">
+      <div class="prog-track"><div class="prog-bar" id="pbar"></div></div>
+      <div class="prog-msg" id="pmsg">Processing…</div>
+    </div>
+    <button class="btn-gen" id="btnGen" disabled onclick="doGenerate()">Generate Reports</button>
+    <div class="dl-wrap" id="dlWrap" style="display:none">
+      <a class="btn-dl xl" id="dlXl" href="#" download>📊 Download Excel</a>
+      <a class="btn-dl doc" id="dlDoc" href="#" download>📄 Download Word</a>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<div class="right">
+  <div class="empty-state" id="empty">
+    <div class="empty-icon">📊</div>
+    <div class="empty-txt">Upload files → Generate</div>
+  </div>
+
+  <div class="rview" id="rview">
+    <div class="sum-bar">
+      <span class="sum-op" id="sOp"></span>
+      <span class="sum-per" id="sPer"></span>
+      <span class="sbadge" id="sBadge" style="display:none"></span>
+    </div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('ch')">Charts</button>
+      <button class="tab" onclick="switchTab('gw')">Gateways</button>
+      <button class="tab" onclick="switchTab('cn')">Channels</button>
+      <button class="tab" onclick="switchTab('tb')">Daily Table</button>
+    </div>
+
+    <div class="panels">
+      <div class="panel active" id="tab-ch">
+        <div id="alertA"></div>
+        <div class="c2">
+          <div class="ccard">
+            <div class="ccard-t" id="c1t">Sales vs Failures</div>
+            <div style="position:relative"><canvas id="c1" height="200"></canvas></div>
+          </div>
+          <div class="ccard">
+            <div class="ccard-t">Failure Rate %</div>
+            <div style="position:relative"><canvas id="c2" height="200"></canvas></div>
+          </div>
+        </div>
+        <div class="ccard">
+          <div class="ccard-t">Abandonments per day</div>
+          <div style="position:relative"><canvas id="c3" height="140"></canvas></div>
+        </div>
+      </div>
+
+      <div class="panel" id="tab-gw">
+        <div class="sec">Total incidents by gateway</div>
+        <div class="gw-list" id="gwTot"></div>
+        <div class="sec">Direct failures by gateway</div>
+        <div class="gw-list" id="gwFail"></div>
+      </div>
+
+      <div class="panel" id="tab-cn">
+        <div class="sec">BY CHANNEL</div>
+        <div class="ch-grid" id="chG"></div>
+        <div class="sec">BY PLATFORM</div>
+        <div class="ch-grid" id="plG"></div>
+      </div>
+
+      <div class="panel" id="tab-tb">
+        <div class="tbl-wrap">
+          <table><thead><tr id="tHead"></tr></thead><tbody id="tBody"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+let type='konnect', charts=[];
+const gc='#242838', tc='#4a5168';
+
+function setType(t){
+  type=t;
+  document.querySelectorAll('.tc').forEach(b=>b.classList.toggle('active',b.dataset.type===t));
+  document.getElementById('sales-hint').textContent=t==='api'?'export_to_csv_*.xlsx':'Informe_de_Ventas_*.xlsx';
+}
+
+// File zones — map short ids to server field names
+const zMap={f:'fallidos',p:'pendientes',a:'abandonos',s:'sales'};
+['f','p','a','s'].forEach(g=>{
+  const inp=document.getElementById('f-'+g);
+  const zone=document.getElementById('z-'+g);
+  const cnt=document.getElementById('c-'+g);
+  inp.addEventListener('change',()=>{
+    const n=inp.files.length;
+    if(n>0){cnt.textContent=n===1?shorten(inp.files[0].name):`${n} files`;cnt.className='zstatus';zone.classList.add('has');}
+    else{cnt.textContent=g==='s'?'failure-only':'drop here';cnt.className='zstatus empty';zone.classList.remove('has');}
+    document.getElementById('infoNote').classList.toggle('show',document.getElementById('f-s').files.length===0);
+    checkReady();
+  });
+  inp.addEventListener('click',e=>e.stopPropagation());
+  zone.addEventListener('dragover',e=>{e.preventDefault();zone.style.borderColor='var(--acc)'});
+  zone.addEventListener('dragleave',()=>zone.style.borderColor='');
+  zone.addEventListener('drop',e=>{
+    e.preventDefault();zone.style.borderColor='';
+    const dt=new DataTransfer();[...e.dataTransfer.files].forEach(f=>dt.items.add(f));
+    inp.files=dt.files;inp.dispatchEvent(new Event('change'));
+  });
+  zone.addEventListener('click',()=>inp.click());
+});
+
+function shorten(n){return n.length>22?n.slice(0,10)+'…'+n.slice(-8):n;}
+function checkReady(){
+  const ok=['f','p','a'].some(g=>document.getElementById('f-'+g).files.length>0)||document.getElementById('f-s').files.length>0;
+  document.getElementById('btnGen').disabled=!ok;
+}
+
+function switchTab(name){
+  ['ch','gw','cn','tb'].forEach((t,i)=>{
+    document.querySelectorAll('.tab')[i].classList.toggle('active',t===name);
+    document.getElementById('tab-'+t).classList.toggle('active',t===name);
+  });
+  if(name==='ch') setTimeout(()=>charts.forEach(c=>c.resize?.()),50);
+}
+
+async function doGenerate(){
+  const op=document.getElementById('operatorName').value.trim()||'Bus Operator';
+  const lang=document.getElementById('lang').value;
+  const fd=new FormData();
+  fd.append('operator',op);fd.append('operatorType',type);fd.append('lang',lang);
+  ['f','p','a'].forEach(g=>[...document.getElementById('f-'+g).files].forEach(f=>fd.append(zMap[g],f)));
+  const sf=document.getElementById('f-s').files[0];if(sf)fd.append('sales',sf);
+
+  setProg(true,'Uploading…',10);
+  document.getElementById('btnGen').disabled=true;
+  document.getElementById('dlWrap').style.display='none';
+
+  const msgs=['Parsing CSV data…','Aggregating stats…','Building Excel…','Building Word…','Finalizing…'];
+  let mi=0;
+  const tick=setInterval(()=>{if(++mi<msgs.length)setProg(true,msgs[mi],10+mi*18);},900);
+  try{
+    const res=await fetch('/generate',{method:'POST',body:fd});
+    clearInterval(tick);
+    if(!res.ok){const e=await res.json();throw new Error(e.error);}
+    setProg(true,'Done!',100);
+    const json=await res.json();
+    setTimeout(()=>{setProg(false);try{render(json);}catch(re){showToast('Render error: '+re.message);console.error(re);}},300);
+  }catch(e){clearInterval(tick);setProg(false);showToast('Error: '+e.message);}
+  finally{document.getElementById('btnGen').disabled=false;}
+}
+
+function setProg(show,msg,pct){
+  document.getElementById('prog').classList.toggle('show',show);
+  document.getElementById('pmsg').textContent=msg;
+  document.getElementById('pbar').style.width=pct+'%';
+}
+
+function render(json){
+  const s=json.stats;
+  document.getElementById('empty').style.display='none';
+  document.getElementById('rview').classList.add('show');
+
+  // Summary bar
+  document.getElementById('sOp').textContent=s.operator;
+  document.getElementById('sPer').textContent=`${s.period}  ·  ${s.days} days`;
+  const sb=document.getElementById('sBadge');
+  const u3=UI[currentLang]||UI.en;
+  if(!s.hasSales){sb.style.display='';sb.className='sbadge warn';sb.textContent=u3.failuresOnly;}
+  else if(s.totalCancelled>0){sb.style.display='';sb.className='sbadge ok';sb.textContent=u3.cancellationsExcluded(s.totalCancelled);}
+  else sb.style.display='none';
+
+  // KPIs
+  const kpis=[
+    s.hasSales
+      ?{l:'Completed sales',v:s.sales.toLocaleString(),s:`avg ${(s.sales/s.days).toFixed(0)}/day`,c:'g'}
+      :{l:'Period',v:`${s.days} days`,s:s.period,c:'b'},
+    {l:'Gateway failures',v:s.failures.toLocaleString(),s:`avg ${(s.failures/s.days).toFixed(1)}/day · ${s.avgFailRate.toFixed(1)}%`,c:'r'},
+    {l:'Abandonments',v:s.abandonments.toLocaleString(),s:`avg ${(s.abandonments/s.days).toFixed(0)}/day`,c:'a'},
+    {l:s.hasSales?(UI[currentLang]||UI.en).lostRevenue:(UI[currentLang]||UI.en).atRiskValue,v:'$'+Math.round(s.lostRevenue).toLocaleString(),s:'CLP',c:'b'},
+  ];
+  document.getElementById('kpis').innerHTML=kpis.map(k=>`<div class="kpi ${k.c}"><div class="kpi-l">${k.l}</div><div class="kpi-v">${k.v}</div><div class="kpi-s">${k.s}</div></div>`).join('');
+
+  // Alert
+  document.getElementById('alertA').innerHTML=s.topGwFailures>0
+    ?`<div class="alert"><div class="alert-ico">⚠</div><div><div class="alert-title">${s.topGateway} — ${((s.topGwFailures/Math.max(s.failures,1))*100).toFixed(1)}% of direct failures</div><div class="alert-body">Contact ${s.topGateway} urgently. Request error code report for period.</div></div></div>`:'';
+
+  // Charts
+  charts.forEach(c=>c.destroy());charts=[];
+  const L=s.daily.map(d=>d.dateStr);
+  const ao={autoSkip:true,maxTicksLimit:14};
+
+  const ds1=[];
+  if(s.hasSales)ds1.push({label:'Sales',data:s.daily.map(d=>d.sales),backgroundColor:'rgba(79,142,247,.65)',yAxisID:'y'});
+  ds1.push({label:'Failures',data:s.daily.map(d=>d.failures),backgroundColor:'rgba(239,68,68,.8)',yAxisID:s.hasSales?'y2':'y'});
+  document.getElementById('c1t').textContent=s.hasSales?'Sales vs Gateway Failures':'Gateway Failures per day';
+  charts.push(new Chart(document.getElementById('c1'),{type:'bar',data:{labels:L,datasets:ds1},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tc,font:{size:10},boxWidth:8}}},scales:{x:{ticks:{...ao,color:tc,maxRotation:45},grid:{color:gc}},y:{position:'left',ticks:{color:tc},grid:{color:gc}},...(s.hasSales?{y2:{position:'right',ticks:{color:tc},grid:{display:false}}}:{})}}}));
+
+  charts.push(new Chart(document.getElementById('c2'),{type:'line',data:{labels:L,datasets:[
+    {label:'Fail %',data:s.daily.map(d=>+d.failureRate.toFixed(2)),borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,.06)',fill:true,tension:.3,pointRadius:2},
+    {label:'3% line',data:s.daily.map(()=>3),borderColor:'#f59e0b',borderWidth:1.5,borderDash:[5,5],pointRadius:0,fill:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tc,font:{size:10},boxWidth:8}}},scales:{x:{ticks:{...ao,color:tc,maxRotation:45},grid:{color:gc}},y:{ticks:{color:tc,callback:v=>v+'%'},grid:{color:gc},min:0}}}}));
+
+  charts.push(new Chart(document.getElementById('c3'),{type:'bar',data:{labels:L,datasets:[{label:'Abandonments',data:s.daily.map(d=>d.abandonments),backgroundColor:'rgba(245,158,11,.65)'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{...ao,color:tc,maxRotation:45},grid:{color:gc}},y:{ticks:{color:tc},grid:{color:gc}}}}}));
+
+  // Gateways tab
+  const gwC=['#ef4444','#f59e0b','#4f8ef7','#22c55e','#8b5cf6','#ec4899','#6b7280'];
+  const mT=s.gateways[0]?.total||1, mF=Math.max(...s.gateways.map(g=>g.failures))||1;
+  document.getElementById('gwTot').innerHTML=s.gateways.slice(0,7).map((g,i)=>`<div class="gwi"><div class="gw-n">${g.gateway}</div><div class="gw-t"><div class="gw-f" style="width:${Math.round(g.total/mT*100)}%;background:${gwC[i]}"></div></div><div class="gw-c">${g.total.toLocaleString()}</div></div>`).join('');
+  const failGws=s.gateways.filter(g=>g.failures>0);
+  document.getElementById('gwFail').innerHTML=failGws.length
+    ?failGws.slice(0,7).map(g=>`<div class="gwi"><div class="gw-n">${g.gateway}</div><div class="gw-t"><div class="gw-f" style="width:${Math.round(g.failures/mF*100)}%;background:#ef4444"></div></div><div class="gw-c" style="color:var(--err)">${g.failures.toLocaleString()}</div></div>`).join('')
+    :'<div style="font:11px var(--mono);color:var(--t3);padding:6px 0">No direct failures</div>';
+
+  // Channels tab
+  const channels=s.channels||[];const platforms=s.platforms||[];
+  const tF=channels.reduce((a,c)=>a+c.failures,0)||1, tA=channels.reduce((a,c)=>a+c.abandonments,0)||1;
+  document.getElementById('chG').innerHTML=channels.map((c,i)=>`<div class="chc ${i===0&&c.failures>0?'top':''}"><div class="chc-n">${c.channel}</div><div class="chc-v" style="color:${i===0?'var(--warn)':'var(--txt)'}">${c.failures.toLocaleString()}</div><div class="chc-s">failures · ${(c.failures/tF*100).toFixed(1)}%</div><div class="chc-s" style="margin-top:3px">${c.abandonments.toLocaleString()} abandons</div></div>`).join('');
+  const tPF=platforms.reduce((a,p)=>a+p.failures,0)||1;
+  document.getElementById('plG').innerHTML=platforms.map(p=>`<div class="chc"><div class="chc-n">${p.platform||'Unknown'}</div><div class="chc-v">${p.failures.toLocaleString()}</div><div class="chc-s">${(p.failures/tPF*100).toFixed(1)}% · ${p.abandonments.toLocaleString()} abandons</div></div>`).join('')||'<div style="font:11px var(--mono);color:var(--t3)">No platform data</div>';
+
+  // Daily table
+  const u2=UI[currentLang]||UI.en;
+  document.getElementById('tHead').innerHTML=[u2.tblDate,s.hasSales?u2.tblSales:null,u2.tblFail,u2.tblPend,u2.tblAban,u2.tblFailRate,u2.tblAbanRate,u2.tblNote].filter(Boolean).map(h=>`<th>${h}</th>`).join('');
+  document.getElementById('tBody').innerHTML=s.daily.map(d=>{
+    const cr=d.failures>=20||d.failureRate>=4, wr=!cr&&(d.failures>=10||d.failureRate>=3);
+    const obs=[];if(d.failures>=20)obs.push('!!Crit');else if(d.failures>=10)obs.push('High');if(d.failureRate>=3)obs.push(d.failureRate.toFixed(1)+'%');if(d.abandonments>=250)obs.push('!!Aban');
+    const sc=s.hasSales?`<td>${d.sales.toLocaleString()}</td>`:'';
+    return `<tr class="${cr?'cr':wr?'wr':''}"><td>${d.dateStr}</td>${sc}<td class="${cr?'red':''}">${d.failures}</td><td>${d.pending}</td><td>${d.abandonments.toLocaleString()}</td><td class="${d.failureRate>=3?'red':''}">${d.failureRate.toFixed(2)}%</td><td>${d.abandonRate.toFixed(1)}%</td><td style="color:var(--t3)">${obs.join(' · ')||'—'}</td></tr>`;
+  }).join('');
+
+  // Downloads
+  document.getElementById('dlWrap').style.display='flex';
+  const xlB=b64b(json.files.excel.data,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  const dcB=b64b(json.files.word.data,'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+  document.getElementById('dlXl').href=URL.createObjectURL(xlB);document.getElementById('dlXl').download=json.files.excel.name;
+  document.getElementById('dlDoc').href=URL.createObjectURL(dcB);document.getElementById('dlDoc').download=json.files.word.name;
+
+  switchTab('ch');
+  setTimeout(()=>charts.forEach(c=>c.resize?.()),150);
+}
+
+function b64b(b64,type){const b=atob(b64),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return new Blob([a],{type});}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),4000);}
+
+const UI={
+  en:{
+    operatorType:'1 — OPERATOR TYPE',operatorLang:'2 — OPERATOR & LANGUAGE',
+    files:'3 — FILES',failures:'Failures',pending:'Pending',abandonments:'Abandonments',
+    sales:'Sales',optional:'optional',generate:'Generate Reports',
+    dlExcel:'📊 Download Excel',dlWord:'📄 Download Word',
+    tabCharts:'Charts',tabGateways:'Gateways',tabChannels:'Channels',tabDaily:'Daily Table',
+    byChannel:'BY CHANNEL',byPlatform:'BY PLATFORM',
+    emptyTitle:'No data yet',emptyDesc:'Upload files and click Generate.',
+    salesHintK:'Informe_de_Ventas_*.xlsx',salesHintA:'export_to_csv_*.xlsx',
+    failuresOnly:'Failures only',cancellationsExcluded:n=>`${n} cancellations excluded`,
+    tblDate:'Date',tblSales:'Sales',tblFail:'Failures',tblPend:'Pend.',
+    tblAban:'Abandons',tblFailRate:'Fail Rate',tblAbanRate:'Abnd Rate',tblNote:'Note',
+    avgFailRate:'avg rate',avgPerDay:'avg',perDay:'/day',days:'days',
+    lostRevenue:'Lost revenue',atRiskValue:'At-risk value',
+  },
+  es:{
+    operatorType:'1 — TIPO DE OPERADOR',operatorLang:'2 — OPERADOR E IDIOMA',
+    files:'3 — ARCHIVOS',failures:'Fallidos',pending:'Pendientes',abandonments:'Abandonos',
+    sales:'Ventas',optional:'opcional',generate:'Generar Informes',
+    dlExcel:'📊 Descargar Excel',dlWord:'📄 Descargar Word',
+    tabCharts:'Gráficos',tabGateways:'Gateways',tabChannels:'Canales',tabDaily:'Tabla Diaria',
+    byChannel:'POR CANAL',byPlatform:'POR PLATAFORMA',
+    emptyTitle:'Sin datos aún',emptyDesc:'Sube archivos y haz clic en Generar.',
+    salesHintK:'Informe_de_Ventas_*.xlsx',salesHintA:'export_to_csv_*.xlsx',
+    failuresOnly:'Solo fallas',cancellationsExcluded:n=>`${n} cancelaciones excluidas`,
+    tblDate:'Fecha',tblSales:'Ventas',tblFail:'Fallas',tblPend:'Pend.',
+    tblAban:'Abandonos',tblFailRate:'Tasa Falla',tblAbanRate:'Tasa Aban.',tblNote:'Nota',
+    avgFailRate:'tasa prom',avgPerDay:'prom',perDay:'/día',days:'días',
+    lostRevenue:'Ingresos perdidos',atRiskValue:'Valor en riesgo',
+  },
+};
+
+let currentLang='en';
+function applyLang(lang){
+  currentLang=lang;
+  const u=UI[lang]||UI.en;
+  // Static labels
+  const q=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const qa=(sel,v)=>{document.querySelectorAll(sel).forEach(e=>e.textContent=v);};
+  // Sections
+  const secEls=document.querySelectorAll('.lbl');
+  if(secEls[0])secEls[0].textContent=u.operatorType;
+  if(secEls[1])secEls[1].textContent=u.operatorLang;
+  if(secEls[2])secEls[2].textContent=u.files;
+  // Zone labels
+  const zoneHdrs=document.querySelectorAll('.zone-lbl');
+  const zoneKeys=['failures','pending','abandonments','sales'];
+  zoneHdrs.forEach((el,i)=>{if(u[zoneKeys[i]])el.textContent=u[zoneKeys[i]];});
+  // Optional badge
+  document.querySelectorAll('.opt-badge').forEach(el=>el.textContent=u.optional);
+  // Buttons
+  q('btnGen',u.generate);
+  q('dlXl',u.dlExcel);q('dlDoc',u.dlWord);
+  // Tabs
+  const tabs=document.querySelectorAll('.tab');
+  const tabKeys=['tabCharts','tabGateways','tabChannels','tabDaily'];
+  tabs.forEach((t,i)=>{if(u[tabKeys[i]])t.textContent=u[tabKeys[i]];});
+  // Panel section labels
+  const secs=document.querySelectorAll('.sec');
+  secs.forEach(s=>{
+    if(s.textContent.includes('BY CHANNEL')||s.textContent.includes('POR CANAL'))s.textContent=u.byChannel;
+    if(s.textContent.includes('BY PLATFORM')||s.textContent.includes('POR PLATAFORMA'))s.textContent=u.byPlatform;
+  });
+  // Sales hint
+  const hint=document.getElementById('sales-hint');
+  if(hint)hint.textContent=type==='api'?u.salesHintA:u.salesHintK;
+  // Empty state
+  const emEl=document.querySelector('.empty-state p');
+  const emT=document.querySelector('.empty-state h3');
+  if(emT)emT.textContent=u.emptyTitle;
+  if(emEl)emEl.textContent=u.emptyDesc;
+}
+</script>
+</body>
+</html>
