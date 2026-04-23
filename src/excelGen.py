@@ -557,49 +557,43 @@ def build_sheet4(wb, data):
 
 # ─── Raw data sheets ──────────────────────────────────────────────────────────
 def build_raw_sheet(wb, title, header_color, records, data, extra_cols=None):
-    ws = wb.create_sheet(title[:31])  # sheet name max 31 chars
+    ws = wb.create_sheet(title[:31])
     ws.sheet_view.showGridLines = False
 
     T = get_t(data)
-    cols    = list(T['raw_cols'])
-    widths  = [24,14,16,16,10,20,14,12,20,16,16]
+    cols   = list(T['raw_cols'])
+    widths = [24,14,16,16,10,20,14,12,20,16,16]
     if extra_cols:
         cols   += [ec[0] for ec in extra_cols]
         widths += [ec[1] for ec in extra_cols]
 
-    # Title row
+    # Title row (styled)
     ws.merge_cells(f'A1:{get_column_letter(len(cols))}1')
     set_cell(ws, 1, 1, title, bg=header_color, fg='FFFFFF', bold=True, sz=11, halign='center')
     ws.row_dimensions[1].height = 28
 
-    # Header row
+    # Header row (styled)
     for ci, (h, w) in enumerate(zip(cols, widths), 1):
         hdr(ws, 2, ci, h, bg=header_color, width=w)
     ws.row_dimensions[2].height = 20
 
-    # Data rows
-    for ri, r in enumerate(records, 3):
-        bg = GR if ri % 2 == 0 else WH
-        base_vals = [
+    # Data rows — use append() for speed (no per-cell styling on bulk rows)
+    for r in records:
+        row = [
             r.get('_pb',''), r.get('_date',''), r.get('_origin',''), r.get('_dest',''),
             r.get('_seat',''), r.get('_operator',''), r.get('_channel',''),
             r.get('_gateway',''), r.get('_pgStatus',''), r.get('_platform',''),
-            r.get('_price', 0),
+            r.get('_price', 0) or 0,
         ]
         if extra_cols:
-            base_vals += [r.get(ec[2],'') for ec in extra_cols]
+            row += [r.get(ec[2],'') for ec in extra_cols]
+        ws.append(row)
 
-        for ci, val in enumerate(base_vals, 1):
-            is_pb = ci == 1
-            fmt = '#,##0' if ci == 11 else None
-            set_cell(ws, ri, ci, val, bg=bg,
-                     fg=header_color if is_pb else '000000',
-                     bold=is_pb,
-                     halign='left' if ci in [1,2,3,4,6] else 'center',
-                     num_fmt=fmt)
-        ws.row_dimensions[ri].height = 15
+    # Column widths
+    for ci, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(ci)].width = w
 
-    # Autofilter
+    # Autofilter + freeze
     ws.auto_filter.ref = f'A2:{get_column_letter(len(cols))}{2+len(records)}'
     ws.freeze_panes = 'B3'
 
@@ -627,17 +621,12 @@ def build_pending_sheet(wb, records, data):
         hdr(ws, 3, ci, h, bg=RD, width=w)
     ws.row_dimensions[3].height = 20
 
-    for ri, r in enumerate(records, 4):
-        for ci, (key, fmt) in enumerate(zip(
-            ['_pb','_date','_origin','_dest','_seat','_operator','_channel','_gateway','_price','_email'],
-            [None,None,None,None,None,None,None,None,'#,##0',None]
-        ), 1):
-            val = r.get(key,'')
-            set_cell(ws, ri, ci, val, bg=RL,
-                     fg=RD if ci==1 else '000000', bold=(ci==1),
-                     halign='left' if ci in [1,2,3,4,6,10] else 'center',
-                     num_fmt=fmt)
-        ws.row_dimensions[ri].height = 18
+    for r in records:
+        ws.append([
+            r.get('_pb',''), r.get('_date',''), r.get('_origin',''), r.get('_dest',''),
+            r.get('_seat',''), r.get('_operator',''), r.get('_channel',''),
+            r.get('_gateway',''), r.get('_price', 0) or 0, r.get('_email',''),
+        ])
 
     ws.freeze_panes = 'B4'
 
